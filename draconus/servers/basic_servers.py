@@ -36,3 +36,15 @@ class EchoServer(BasicTemplate):
         self.Msg(f"Close Connection: {self._close_target_conn(handler)}\n")
     
     
+class TestServer(BasicTemplate):
+    SERV_TYPE = "Test"
+    INFO_SERV = "Test Server"
+
+    def __init__(self, main_pipe, **kwargs):
+        super().__init__(main_pipe, **kwargs)
+    
+    def show_config(self):
+        config = super()._show_config()
+        config["SERV_TYPE"] = self.SERV_TYPE
+        config["INFO_SERV"] = self.INFO_SERV
+        return config

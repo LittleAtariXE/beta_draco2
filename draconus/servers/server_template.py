@@ -18,6 +18,8 @@ class MrHandler:
         self.conn = conn
         self.addr = addr
         self.Addr = f"{self.addr[0]} : {self.addr[1]}"
+        self._sys_op = "Unknown"
+        self._sys_env = "Unknown"
     
     def close(self):
         try:
@@ -119,7 +121,7 @@ class BasicTemplate(Process):
     
     def _accept_conn(self):
         conn, addr = self.server.accept()
-        self.Msg(f"NEW CONN from: {addr[0]} : {addr[1]}")
+        self.Msg(f"[{self.name}] New Connection from: {addr[0]} : {addr[1]}")
         new_client = self._add_conn(conn, addr)
         self.ACCEPT_CONN(new_client)
   
@@ -131,10 +133,19 @@ class BasicTemplate(Process):
     def _show_connections(self):
         self.Msg(f"CONNECTIONS: {self.CONNECTIONS}")
         self.Msg(f"\n[{self.name}] ------------- Connected Clients --------------------------\n", level=True, end=False)
-        self.Msg(f"\n[{self.name}]--- ID ----- IP -------- PORT--------\n", level=True, end=False)
+        self.Msg(f"\n[{self.name}]--- ID ----- IP -------- PORT--------OP SYSTEM--------\n", level=True, end=False)
         for c in self.CONNECTIONS:
-            self.Msg(f"** {c}  -  {self.CONNECTIONS[c].Addr}", level=True, end=False)
+            self.Msg(f"** {c}  -  {self.CONNECTIONS[c].Addr}  - {self.CONNECTIONS[c]._sys_op}", level=True, end=False)
         self.Msg("")
+    
+    def _client_info(self, client_id):
+        client = self.CONNECTIONS.get(str(client_id))
+        if not client:
+            self.Msg(f"[{self.name}] ERROR: Client is not connected", level=True)
+            return False
+        self.Msg(f"[{self.name}] ---- Client: {client.Addr} ------\n{client._sys_env}")
+        
+        
     
     def _close_conn(self):
         for c in self.CONNECTIONS:
@@ -200,12 +211,10 @@ class BasicTemplate(Process):
     def _exec_sys_command(self, handler, command):
         self.Msg(f"SYS COMMAND FROM CLIENT '{handler.Addr}': {command}")
         cmd = self._unpack_sys_cmd(command)
-
-
-
-
-        
-        
+        if cmd[0] == "sys_info":
+            handler._sys_op = cmd[1]
+        if cmd[0] == "sys_env":
+            handler._sys_env = cmd[1]
     
     def _show_config(self):
         config = {
@@ -242,7 +251,7 @@ class BasicTemplate(Process):
     def run(self):
         if self._build_server():
             while True:
-                pass
+                sleep(20)
         self.Msg("ENDDDDDDDDD")
 
 
@@ -261,6 +270,7 @@ class ServerControler(Thread):
             out = self.main_pipe.recv()
             return out
     
+    
 
 
     def _base_command(self, cmd):
@@ -274,8 +284,9 @@ class ServerControler(Thread):
             self.SERVER.Msg(self.SERVER.show_config(), level=True)
         elif cmd == "$conf":
             self.SERVER._send_config()
-        elif cmd == "test test":
-            self.SERVER.Msg("Dziala")
+        elif cmd.startswith("info"):
+            client_id = cmd.lstrip("info").strip(" ")
+            self.SERVER._client_info(client_id)
         else:
             print("Unknown")
     

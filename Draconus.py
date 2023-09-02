@@ -7,7 +7,7 @@ from time import sleep
 from multiprocessing import Pipe
 
 from draconus.CONFIG import FORMAT_CODE_COMMUNICATION, SOCKETS_DIR, DRACO_SOCKET_RAW_LEN
-from draconus import Logger, EchoServer
+from draconus import Logger, EchoServer, TestServer
 
 
 class Draconus:
@@ -25,7 +25,8 @@ class Draconus:
         self.PIPES = {}
         self.SERVERS = {}
         self.TYPE_SERVERS = {
-            EchoServer.SERV_TYPE : EchoServer
+            EchoServer.SERV_TYPE : EchoServer,
+            TestServer.SERV_TYPE : TestServer
         }
 
 
@@ -152,6 +153,39 @@ class Draconus:
         serv.send("stop")
         return True
     
+    def kill_spec_server(self, name):
+        if name not in self.SERVERS:
+            self._send_msg("[DRACONUS] ERROR: Server does not exist")
+        try:
+            self.SERVERS[name].terminate()
+        except:
+            self._send_msg("[DRACONUS] [!!] Cant terminate process. Trying kill ....")
+            try:
+                self.SERVERS["name"].kill()
+            except:
+                self._send_msg("[DRACONUS] ERROR: Cant kill process !! Try terminate Draconus")
+                return False
+        del self.SERVERS[name]
+        del self.PIPES[name]
+        self._send_msg("[DRACONUS] Server Delete Successfull")
+        return True
+
+    
+
+    def exit_draconus(self):
+        self._send_msg("[DRACONUS] Stoping Draconus ....")
+        for s in self.SERVERS:
+            try:
+                self.SERVERS[c].terminate()
+            except:
+                try:
+                    self.SERVERS[c].kill()
+                except:
+                    pass
+        sleep(0.5)
+        self._send_msg("[SYSTEM] Draconus Exit")
+        sys.exit()
+
     def show_config(self):
         if len(self.PIPES) == 0:
             self._send_msg("[DRACONUS] No servers created")
@@ -159,6 +193,14 @@ class Draconus:
         for s in self.PIPES:
             self.PIPES[s].send("conf")
             sleep(0.5)
+    
+    def show_serv_types(self):
+        buff = "\n--------------- Server Types ----------------------\n"
+        for s in self.TYPE_SERVERS:
+            buff += f"--- Type: {self.TYPE_SERVERS[s].SERV_TYPE}\n--- Description: {self.TYPE_SERVERS[s].INFO_SERV}\n"
+            buff += "--------------------------------------------------------------------------------------\n"
+        self._send_msg(buff)
+
     
     def need_config(self, serv_name):
         pipe = self.PIPES.get(serv_name)
@@ -198,6 +240,13 @@ class Draconus:
         elif command.startswith("$conf"):
             name = command.lstrip("$conf").strip(" ")
             self.need_config(name)
+        elif command.startswith("kill"):
+            name = command.lstrip("kill").strip(" ")
+            self.kill_spec_server(name)
+        elif command == "DRACO STOP":
+            self.exit_draconus()
+        elif command == "serv types":
+            self.show_serv_types()
         else:
             self._send_msg("Unknown Command")
 
