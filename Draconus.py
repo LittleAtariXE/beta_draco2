@@ -7,7 +7,7 @@ from time import sleep
 from multiprocessing import Pipe
 
 from draconus.CONFIG import FORMAT_CODE_COMMUNICATION, SOCKETS_DIR, DRACO_SOCKET_RAW_LEN
-from draconus import Logger, EchoServer, TestServer
+from draconus import Logger, EchoServer, TestServer, BasicRat, TestAdv
 
 
 class Draconus:
@@ -26,7 +26,9 @@ class Draconus:
         self.SERVERS = {}
         self.TYPE_SERVERS = {
             EchoServer.SERV_TYPE : EchoServer,
-            TestServer.SERV_TYPE : TestServer
+            TestServer.SERV_TYPE : TestServer,
+            BasicRat.SERV_TYPE : BasicRat,
+            TestAdv.SERV_TYPE : TestAdv
         }
 
 

