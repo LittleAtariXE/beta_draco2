@@ -172,11 +172,13 @@ def build_draco_shell(CeCe):
         print("************ Draconus Base Commands ************\n")
         print("****** clr           - Clear screen")
         print("****** exit          - Exit Comand Center. Draconus still working")
+        print("****** show          - Show servers list, types, files etc.")
         print("****** make          - Creates new server. see: 'make --help' for instruction")
         print("****** kill          - Delete server. Ex: 'kill MyServer' ")
         print("****** start <name>  - Start server listening. Ex: 'start MyServer' ")
         print("****** stop <name>   - Stop server listening. Ex: 'stop MyServer' ")
         print("****** hive          - Creates worms, rats, botnet etc. see 'hive --help'")
+        print("****** theend        - Close Draconus and all servers")
 
     
     @draco_shell.command()
@@ -184,7 +186,7 @@ def build_draco_shell(CeCe):
         os.system("clear")
     
     @draco_shell.command()
-    @click.option("--config", "-c", required=False, is_flag=True, help="Show servers config")
+    @click.option("--config", "-c", required=False, is_flag=True, help="Show configurations of active servers")
     @click.option("--types", "-t", is_flag=True, required=False, help="Show available servers type")
     def show(config, types):
         if config:
@@ -231,6 +233,9 @@ def build_draco_shell(CeCe):
         """--------- MAKE function ------\n
         --- make creates new server. Please see 'show --types' function for servers types\n
         --- 'make <serv_type> <name> <port>'  - Creates New Server\n
+        --- <serv_types>  - Types of server. (Echo, BasicRat etc.)
+        --- <name> - Server Name
+        --- <port> - Server Port\n
         --- ex: make Echo MyServer 1234
         --- ex: make Echo MyServer 2222 -s   - starts listening immediately\n
         --- ex: make Echo MyServer 2222 -s -np  - starts listening immediately and show only important messages\n
@@ -301,6 +306,13 @@ def build_server_shell(CeCe, name):
     @shell(prompt=f"[{name}] >>", intro="------ Server Shell. Commands will be send directly to server ! Put help for commands list ------- ", on_finished=exit_server_shell)
     def server_shell():
         pass
+
+    @server_shell.command()
+    def help():
+        print("\n------------- Server Shell Command ----------- ")
+        print("------ ss <command>      - Send Command to server ")
+        print("-----------------------------------------------------------------------------\n")
+        CeCe.send_msg("help")
 
     @server_shell.command()
     @click.argument("command")

