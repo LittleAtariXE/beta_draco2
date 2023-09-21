@@ -28,6 +28,8 @@ CLIENT_PAUSE_CONNECTION = 5
 APP_DIRECTORY = str(Path(os.path.dirname(__file__)).parent)
 SOCKETS_DIR = os.path.join(APP_DIRECTORY, "draconus", "_sockets")
 OUTPUT_DIR = os.path.join(APP_DIRECTORY, "OUTPUT")
+EXTRAS_DIR = os.path.join(APP_DIRECTORY, "extras")
+
 
 print(APP_DIRECTORY)
 print(SOCKETS_DIR)
